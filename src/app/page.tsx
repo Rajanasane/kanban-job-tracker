@@ -9,46 +9,43 @@ export type JobData = Omit<JobDocument, '_id' | 'dateApplied'> & {
 
 // SSR Data Fetching (runs on the server before the page loads)
 async function getInitialJobs(): Promise<JobData[]> {
-  // Determine the correct host URL for the fetch call
-  const host = process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : 'https://<YOUR-DOMAIN>';
-  
+  // FIX: Change the fetch URL to a relative path.
+  // When running on the server (SSR), using a relative path like /api/jobs 
+  // automatically directs the request to the internal API handler, 
+  // resolving the "Invalid URL" error.
+  const apiEndpoint = '/api/jobs';
+  
   try {
-    const res = await fetch(`${host}/api/jobs`, {
+    const res = await fetch(apiEndpoint, {
       cache: 'no-store', // Always fetch fresh data
     });
 
     if (!res.ok) {
+      // Log a simpler error message if the fetch itself fails
+      console.error(`API Fetch failed with status: ${res.status}`);
       throw new Error(`Failed to fetch jobs: ${res.status}`);
     }
 
     const rawJobs: any[] = await res.json();
-
-    // Map the raw data to the expected JobData structure, ensuring correct types
+    
+    // ... (rest of the mapping logic remains correct)
     return rawJobs.map((job) => {
-      // 1. Attempt to create a Date object from the database value
       const jobDate = new Date(job.dateApplied);
-      
-      // 2. Validate the date using isNaN(date.getTime())
-      // If the date is invalid, use the current date as a fallback.
-      const safeDate = isNaN(jobDate.getTime()) 
-          ? new Date() 
+      const safeDate = isNaN(jobDate.getTime()) 
+          ? new Date() 
           : jobDate;
 
       return ({
-        // Explicitly convert the ID to a string
-        _id: job._id.toString(), 
+        _id: job._id.toString(), 
         company: job.company,
         role: job.role,
         status: job.status,
-        // Now safely convert the guaranteed valid date to the 'YYYY-MM-DD' string format
         dateApplied: safeDate.toISOString().split('T')[0],
       }) as JobData;
     });
 
   } catch (error) {
-    console.error('SSR Fetch Error:', error);
-    // If you see the RangeError now, it means it's logging the error, 
-    // but the fallback should prevent the crash.
+    console.error('SSR Fetch Error (using relative path):', error);
     return []; // Return an empty array on failure
   }
 }
