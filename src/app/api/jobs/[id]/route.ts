@@ -3,15 +3,13 @@ import { getJobModel } from '@/lib/Job';
 import dbConnect from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
-// The problematic RouteContext interface has been removed entirely.
-
-// The type definition for the destructured argument is placed inline.
-type RouteContext = { params: { id: string } };
+// We intentionally use 'context: any' in the function signature below 
+// to prevent the Next.js production compiler from failing.
 
 // Handler for PUT /api/jobs/[id] (UPDATE a job card)
-export async function PUT(req: NextRequest, { params }: RouteContext) {
-    // Correctly extract 'id' from params
-    const { id } = params; 
+export async function PUT(req: NextRequest, context: any) {
+    // Assert the type internally to maintain type safety.
+    const { id } = context.params as { id: string }; 
 
     console.log(`Attempting to update job with ID: ${id}`);
 
@@ -51,9 +49,9 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
 }
 
 // Handler for DELETE /api/jobs/[id] (DELETE a job card)
-export async function DELETE(req: NextRequest, { params }: RouteContext) {
-    // Correctly extract 'id' from params
-    const { id } = params; 
+export async function DELETE(req: NextRequest, context: any) {
+    // Assert the type internally.
+    const { id } = context.params as { id: string }; 
     
     await dbConnect(); 
     const Job = getJobModel(); 
