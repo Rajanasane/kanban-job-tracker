@@ -1,66 +1,70 @@
-import { STATUSES, JobDocument } from '@/lib/Job';
-import KanbanBoard from '@/components/KanbanBoard';
+import { NextRequest, NextResponse } from 'next/server';
+import { getJobModel } from '@/lib/Job'; 
+import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 
-// Define the Job Data Structure for the frontend
-export type JobData = Omit<JobDocument, '_id' | 'dateApplied'> & {
-  _id: string;
-  dateApplied: string; // String in YYYY-MM-DD format
-};
+// Handler for PUT /api/jobs/[id] (UPDATE a job card)
+// This signature ensures Next.js correctly provides the 'id' parameter.
+export async function PUT(req: NextRequest, context: any) {
+    // CRITICAL FIX: We extract the ID from context.params using a type assertion.
+    const { id } = context.params as { id: string }; 
 
-// SSR Data Fetching (runs on the server before the page loads)
-async function getInitialJobs(): Promise<JobData[]> {
-  // FIX: Change the fetch URL to a relative path.
-  // When running on the server (SSR), using a relative path like /api/jobs 
-  // automatically directs the request to the internal API handler, 
-  // resolving the "Invalid URL" error.
-  const apiEndpoint = '/api/jobs';
-  
-  try {
-    const res = await fetch(apiEndpoint, {
-      cache: 'no-store', // Always fetch fresh data
-    });
+    console.log(`Attempting to update job with ID: ${id}`); 
 
-    if (!res.ok) {
-      // Log a simpler error message if the fetch itself fails
-      console.error(`API Fetch failed with status: ${res.status}`);
-      throw new Error(`Failed to fetch jobs: ${res.status}`);
+    await dbConnect(); 
+    const Job = getJobModel(); 
+  
+    try {
+      const body = await req.json();
+      
+      // Use the extracted ID
+      const job = await Job.findByIdAndUpdate(id, body, { 
+        new: true, 
+        runValidators: true 
+      });
+      
+      if (!job) {
+        return NextResponse.json({ message: 'Job not found' }, { status: 404 });
+      }
+
+      // Assert type and ensure _id is stringified for the frontend
+      const jobObject = job.toObject() as { _id: any, [key: string]: any };
+      jobObject._id = jobObject._id.toString();
+
+      return NextResponse.json(jobObject, { status: 200 });
+    } catch (error) {
+      console.error('Error updating job:', error);
+      
+      if (error instanceof mongoose.Error.ValidationError) {
+        return NextResponse.json({ 
+          message: 'Validation failed', 
+          errors: error.errors 
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({ message: 'Error updating job' }, { status: 500 });
     }
-
-    const rawJobs: any[] = await res.json();
-    
-    // ... (rest of the mapping logic remains correct)
-    return rawJobs.map((job) => {
-      const jobDate = new Date(job.dateApplied);
-      const safeDate = isNaN(jobDate.getTime()) 
-          ? new Date() 
-          : jobDate;
-
-      return ({
-        _id: job._id.toString(), 
-        company: job.company,
-        role: job.role,
-        status: job.status,
-        dateApplied: safeDate.toISOString().split('T')[0],
-      }) as JobData;
-    });
-
-  } catch (error) {
-    console.error('SSR Fetch Error (using relative path):', error);
-    return []; // Return an empty array on failure
-  }
 }
 
-// The Main Page Component
-export default async function Home() {
-  const initialJobs = await getInitialJobs();
+// Handler for DELETE /api/jobs/[id] (DELETE a job card)
+export async function DELETE(req: NextRequest, context: any) {
+    // CRITICAL FIX: We extract the ID from context.params using a type assertion.
+    const { id } = context.params as { id: string }; 
+    
+    await dbConnect(); 
+    const Job = getJobModel(); 
+  
+    try {
+      // Use the extracted ID
+      const deletedJob = await Job.deleteOne({ _id: id });
 
-  return (
-    <main className="min-h-screen bg-gray-50 p-8">
-      <h1 className="text-4xl font-extrabold text-gray-900 mb-8 text-center">
-        💼 Job Application Tracker
-      </h1>
-      {/* Pass the server-fetched data to the client component */}
-      <KanbanBoard initialJobs={initialJobs} statuses={STATUSES} />
-    </main>
-  );
+      if (deletedJob.deletedCount === 0) {
+        return NextResponse.json({ message: 'Job not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ message: 'Successfully deleted' }, { status: 200 });
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      return NextResponse.json({ message: 'Error deleting job' }, { status: 500 });
+    }
 }
