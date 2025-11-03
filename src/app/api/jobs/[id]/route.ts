@@ -3,18 +3,15 @@ import { getJobModel } from '@/lib/Job';
 import dbConnect from '@/lib/mongodb';
 import mongoose from 'mongoose';
 
-// The problematic custom type alias is intentionally removed or ignored.
+// The problematic RouteContext interface has been removed entirely.
 
-// The type definition is still required for the internal logic, but we name the context 
-// argument something generic to avoid the compiler error.
-type ParamsContext = { params: { id: string } };
+// The type definition for the destructured argument is placed inline.
+type RouteContext = { params: { id: string } };
 
 // Handler for PUT /api/jobs/[id] (UPDATE a job card)
-// FIX: We use 'context' with 'any' type to avoid the build failure, 
-// and then assert the structure internally.
-export async function PUT(req: NextRequest, context: any) { 
-    // We now access params from the context object directly.
-    const { id } = context.params as { id: string }; 
+export async function PUT(req: NextRequest, { params }: RouteContext) {
+    // Correctly extract 'id' from params
+    const { id } = params; 
 
     console.log(`Attempting to update job with ID: ${id}`);
 
@@ -54,9 +51,9 @@ export async function PUT(req: NextRequest, context: any) {
 }
 
 // Handler for DELETE /api/jobs/[id] (DELETE a job card)
-export async function DELETE(req: NextRequest, context: any) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
     // Correctly extract 'id' from params
-    const { id } = context.params as { id: string };
+    const { id } = params; 
     
     await dbConnect(); 
     const Job = getJobModel(); 
