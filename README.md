@@ -103,7 +103,7 @@ src/
 | Deployment    |                Status               |
 | ------------- | :---------------------------------: |
 | **Platform**  |        Vercel / Render / etc.       |
-| **Live Demo** | [INSERT_YOUR_LIVE_DEMO_URL_HERE](#) |
+| **Live Demo** |(https://kanban-job-tracker-whzb-7wy7e8uf4-rajanasanes-projects.vercel.app/) |
 
 ---
 
